@@ -1,0 +1,53 @@
+stages:
+- build
+- test
+- deploy
+default:
+  image: node
+jobs:
+  build-job:
+    extends:
+    - '.standard-rules'
+    stage: build
+    script:
+    - npm install
+    - npm run build
+  lint-markdown:
+    extends:
+    - '.standard-rules'
+    stage: test
+    script:
+    - npm install markdownlint-cli2 --global
+    - markdownlint-cli2 -v
+    - markdownlint-cli2 'blog/**/*.md' 'docs/**/*.md'
+    allow_failure: 'true'
+  test-html:
+    extends:
+    - '.standard-rules'
+    stage: test
+    script:
+    - npm install --save-dev htmlhint
+    - npx htmlhint --version
+    - npx htmlhint build/
+    artifacts:
+      paths:
+      - build/
+    dependencies:
+    - build-job
+  pages:
+    extends: []
+    stage: deploy
+    image: busybox
+    script:
+    - mv build/ public/
+    artifacts:
+      paths:
+      - public/
+    dependencies:
+    - build-job
+    rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+'.standard-rules':
+  rules:
+  - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
